@@ -3,6 +3,7 @@ import rclpy
 from rclpy.node import Node
 from pylx16a.lx16a import LX16A
 from ros2_lx16a_driver.srv import GetServoInfo
+from std_msgs.msg import Float32MultiArray  # Message utilisé pour la commande de position
 
 class LX16AController(Node):
     def __init__(self):
@@ -19,6 +20,14 @@ class LX16AController(Node):
 
         # Création du service GetServoInfo
         self.srv = self.create_service(GetServoInfo, '/get_servo_info', self.handle_get_servo_info)
+
+        # Création du subscriber pour la commande de position
+        self.position_subscriber = self.create_subscription(
+            Float32MultiArray,  # Type de message
+            '/servo_positions',  # Nom du topic
+            self.handle_position_command,  # Callback
+            10  # Taille de la file d'attente
+        )
 
         self.get_logger().info('Nœud LX-16A prêt.')
 
@@ -73,6 +82,21 @@ class LX16AController(Node):
 
         return response
 
+    def handle_position_command(self, msg):
+        """Callback pour gérer la commande de position des servos."""
+        if len(msg.data) == 0:
+            self.get_logger().warn("Aucune commande de position reçue.")
+            return
+
+        # Appliquer la commande de position à chaque servo
+        for i, position in enumerate(msg.data):
+            servo = self.get_servo(i + 1)  # Récupère le servo correspondant à l'index (1 basé)
+            if servo is not None:
+                try:
+                    servo.move(position)  # Méthode pour déplacer le servo à la position donnée
+                    self.get_logger().info(f"Servo {i+1} déplacé à la position {position}.")
+                except Exception as e:
+                    self.get_logger().error(f"Erreur lors du déplacement du servo {i+1} : {e}")
 
 def main(args=None):
     rclpy.init(args=args)
@@ -88,3 +112,4 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+
