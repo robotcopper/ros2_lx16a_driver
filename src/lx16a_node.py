@@ -2,7 +2,7 @@
 import rclpy
 from rclpy.node import Node
 from pylx16a.lx16a import LX16A
-from ros2_lx16a_driver.srv import GetServoInfo
+from ros2_lx16a_driver.srv import GetLX16AInfo, SetLX16AParams, SetLX16ATorqueLed 
 from std_msgs.msg import Float32MultiArray  # Message utilisé pour la commande de position
 
 class LX16AController(Node):
@@ -18,8 +18,10 @@ class LX16AController(Node):
             self.destroy_node()
             return
 
-        # Création du service GetServoInfo
-        self.srv = self.create_service(GetServoInfo, '/get_servo_info', self.handle_get_servo_info)
+        # Création des services
+        self.srv_get = self.create_service(GetLX16AInfo, '/lx16a_get_info', self.handle_get_info)
+        self.srv_set_params = self.create_service(SetLX16AParams, '/lx16a_set_params', self.handle_set_params)
+        self.srv_set_torque_led = self.create_service(SetLX16ATorqueLed, '/lx16a_set_torque_led', self.handle_set_torque_led)
 
         # Création du subscriber pour la commande de position
         self.position_subscriber = self.create_subscription(
@@ -42,7 +44,7 @@ class LX16AController(Node):
                 return None
         return self.servos[servo_id]
 
-    def handle_get_servo_info(self, request, response):
+    def handle_get_info(self, request, response):
         """Service pour obtenir les informations détaillées d'un servo."""
         servo_id = int(request.id)  # ID du servo demandé
         servo = self.get_servo(servo_id)
@@ -82,6 +84,82 @@ class LX16AController(Node):
 
         return response
 
+    def handle_set_params(self, request, response):
+        """Service pour définir les paramètres d'un servo."""
+        servo_id = int(request.id)
+        servo = self.get_servo(servo_id)
+
+        if servo is None:
+            self.get_logger().error(f"Servo {servo_id} non disponible.")
+            response.success = False
+            return response
+        
+        # default_values = {
+        #     'new_id': 0,
+        #     'angle_offset': 0,
+        #     'angle_min': 0,
+        #     'angle_max': 240,
+        #     'voltage_min': 4500.0,
+        #     'voltage_max': 12000.0,
+        #     'temperature_limit': 85.0,
+        #     'motor_mode': False,
+        #     'motor_speed': 0.0,
+        #     'torque_enabled': True,
+        #     'led_enabled': True,
+        #     'led_flash_condition': 1
+        # }
+
+        try:
+            # Appliquer les paramètres reçus
+            servo.set_id(request.new_id)
+            servo.set_angle_offset(request.angle_offset)
+            servo.set_angle_limits(request.angle_min, request.angle_max)
+            servo.set_vin_limits(int(request.voltage_min), int(request.voltage_max))
+            servo.set_temp_limit(int(request.temperature_limit))
+                # print(request.motor_mode)
+                # if request.motor_mode:
+                #     servo.motor_mode(1000)
+                # else:
+                #     servo.servo_mode()
+            servo.set_led_error_triggers(request.led_error_temp,request.led_error_voltage,request.led_error_locked)
+            
+            self.get_logger().info(f"Paramètres du servo {servo_id} mis à jour.")
+            response.success = True
+        except Exception as e:
+            self.get_logger().error(f"Erreur lors de la mise à jour des paramètres du servo {servo_id} : {e}")
+            response.success = False
+        
+        return response
+    
+    def handle_set_torque_led(self, request, response):
+        """Service pour définir le torque et controller la led d'un servo."""
+        servo_id = int(request.id)
+        servo = self.get_servo(servo_id)
+
+        if servo is None:
+            self.get_logger().error(f"Servo {servo_id} non disponible.")
+            response.success = False
+            return response
+
+        try:
+            # Appliquer les paramètres reçus
+            if request.torque_enabled:
+                servo.enable_torque()
+            else:
+                servo.disable_torque()
+            if request.led_enabled:
+                servo.led_power_on()
+            else:
+                servo.led_power_off()
+
+            self.get_logger().info(f"Paramètres du servo {servo_id} mis à jour.")
+            response.success = True
+        except Exception as e:
+            self.get_logger().error(f"Erreur lors de la mise à jour des paramètres du servo {servo_id} : {e}")
+            response.success = False
+        
+        return response
+
     def handle_position_command(self, msg):
         """Callback pour gérer la commande de position des servos."""
         if len(msg.data) == 0:
@@ -90,7 +168,7 @@ class LX16AController(Node):
 
         # Appliquer la commande de position à chaque servo
         for i, position in enumerate(msg.data):
-            servo = self.get_servo(i + 1)  # Récupère le servo correspondant à l'index (1 basé)
+            servo = self.get_servo(i)
             if servo is not None:
                 try:
                     servo.move(position)  # Méthode pour déplacer le servo à la position donnée
@@ -112,4 +190,5 @@ def main(args=None):
 
 if __name__ == '__main__':
     main()
+
 
