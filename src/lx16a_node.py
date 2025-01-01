@@ -3,7 +3,7 @@ import rclpy
 from rclpy.node import Node
 from pylx16a.lx16a import LX16A
 from ros2_lx16a_driver.srv import GetLX16AInfo, SetLX16AParams, SetLX16ATorqueLed 
-from std_msgs.msg import Float32MultiArray  # Message utilisé pour la commande de position
+from std_msgs.msg import Float32MultiArray, Int32MultiArray  # Message utilisé pour la commande de position
 
 class LX16AController(Node):
     def __init__(self):
@@ -26,8 +26,16 @@ class LX16AController(Node):
         # Création du subscriber pour la commande de position
         self.position_subscriber = self.create_subscription(
             Float32MultiArray,  # Type de message
-            '/servo_positions',  # Nom du topic
+            '/cmd_pose_lx16a',  # Nom du topic
             self.handle_position_command,  # Callback
+            10  # Taille de la file d'attente
+        )
+
+        # Création du subscriber pour la commande de vitesse
+        self.position_subscriber = self.create_subscription(
+            Int32MultiArray,  # Type de message
+            '/cmd_vel_lx16a',  # Nom du topic
+            self.handle_velocity_command,  # Callback
             10  # Taille de la file d'attente
         )
 
@@ -171,10 +179,27 @@ class LX16AController(Node):
             servo = self.get_servo(i)
             if servo is not None:
                 try:
+                    servo.servo_mode()
                     servo.move(position)  # Méthode pour déplacer le servo à la position donnée
-                    self.get_logger().info(f"Servo {i+1} déplacé à la position {position}.")
+                    self.get_logger().info(f"Servo {i} déplacé à la position {position}.")
                 except Exception as e:
-                    self.get_logger().error(f"Erreur lors du déplacement du servo {i+1} : {e}")
+                    self.get_logger().error(f"Erreur lors du déplacement du servo {i} : {e}")
+
+    def handle_velocity_command(self, msg):
+        """Callback pour gérer la commande de vitesse des servos."""
+        if len(msg.data) == 0:
+            self.get_logger().warn("Aucune commande de vitesse reçue.")
+            return
+
+        # Appliquer la commande de vitesse à chaque servo
+        for i, velocity in enumerate(msg.data):
+            servo = self.get_servo(i)
+            if servo is not None:
+                try:
+                    servo.motor_mode(velocity) # Méthode pour comander le servo à la vitesse donnée
+                    self.get_logger().info(f"Servo {i} commandé à la vitesse {velocity}.")
+                except Exception as e:
+                    self.get_logger().error(f"Erreur lors du déplacement du servo {i} : {e}")
 
 def main(args=None):
     rclpy.init(args=args)

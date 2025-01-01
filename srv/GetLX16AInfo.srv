@@ -7,7 +7,7 @@ float32 voltage_min
 float32 voltage_max
 float32 temperature_limit
 bool motor_mode
-float32 motor_speed
+int32 motor_speed
 bool torque_enabled
 bool led_enabled
 bool led_error_temp  
