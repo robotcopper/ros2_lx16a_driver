@@ -15,7 +15,7 @@ find_package(rosidl_default_generators REQUIRED)
 rosidl_generate_interfaces(${PROJECT_NAME}
   "srv/GetLX16AInfo.srv"
   "srv/SetLX16AParams.srv"
-  "srv/SetLX16ATorqueLed.srv"
+  "srv/SetLX16ATorque.srv"
 )
 
 # Install Python modules
@@ -26,6 +26,12 @@ install(
   PROGRAMS
     src/lx16a_node.py
   DESTINATION lib/${PROJECT_NAME}
+)
+
+# Install YAML
+install(
+  DIRECTORY params/
+  DESTINATION share/${PROJECT_NAME}/params
 )
 
 if(BUILD_TESTING)

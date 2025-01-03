@@ -9,5 +9,6 @@ float32 temperature_limit
 bool led_error_temp True
 bool led_error_voltage True
 bool led_error_locked True
+bool led_enabled True
 ---
 bool success

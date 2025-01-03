@@ -1,0 +1,12 @@
+lx16a_controller:
+  ros__parameters:
+    default_angle_offset: 0
+    default_angle_min: 0
+    default_angle_max: 240
+    default_voltage_min: 4500
+    default_voltage_max: 12000
+    default_temperature_limit: 85
+    log_level: 0  #UNSET: 0 DEBUG: 10 INFO: 20 WARN: 30 ERROR: 40 FATAL: 50
+    port: "/dev/ttyUSB0"
+    scan_connected_servos: False
+  
