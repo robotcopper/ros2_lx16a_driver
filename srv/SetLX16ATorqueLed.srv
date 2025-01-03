@@ -1,5 +1,5 @@
 int32 id
-bool torque_enabled
-bool led_enabled
+bool torque_enabled True
+bool led_enabled True
 ---
 bool success

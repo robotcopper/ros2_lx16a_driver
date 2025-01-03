@@ -4,15 +4,23 @@ from rclpy.node import Node
 from pylx16a.lx16a import LX16A
 from ros2_lx16a_driver.srv import GetLX16AInfo, SetLX16AParams, SetLX16ATorqueLed 
 from std_msgs.msg import Float32MultiArray, Int32MultiArray
+from rclpy.logging import LoggingSeverity
+import threading
+import sys
+import time
 
 class LX16AController(Node):
     def __init__(self):
         super().__init__('lx16a_controller')
 
+        # Manage log verbosity 
+        self.get_logger().set_level(LoggingSeverity.UNSET)
+
         # Initialize the LX-16A bus
         try:
-            LX16A.initialize("/dev/ttyUSB0")  # Remplacez par votre port série
+            LX16A.initialize("/dev/ttyUSB0")
             self.servos = {}
+            self.scan_connected_servos()
         except Exception as e:
             self.get_logger().error(f"Error initializing communication: {e}")
             self.destroy_node()
@@ -32,7 +40,7 @@ class LX16AController(Node):
         )
 
         # Create subscriber for velocity control
-        self.position_subscriber = self.create_subscription(
+        self.velocity_subscriber = self.create_subscription(
             Int32MultiArray,  # Message type
             '/cmd_vel_lx16a',  # Topic name
             self.handle_velocity_command,  # Callback
@@ -102,29 +110,30 @@ class LX16AController(Node):
             response.success = False
             return response
         
-        # default_values = {
-        #     'new_id': 0,
-        #     'angle_offset': 0,
-        #     'angle_min': 0,
-        #     'angle_max': 240,
-        #     'voltage_min': 4500.0,
-        #     'voltage_max': 12000.0,
-        #     'temperature_limit': 85.0,
-        #     'motor_mode': False,
-        #     'motor_speed': 0.0,
-        #     'torque_enabled': True,
-        #     'led_enabled': True,
-        #     'led_flash_condition': 1
-        # }
+        default_values = {
+            'new_id': servo_id,
+            'angle_offset': 0,
+            'angle_min': 0,
+            'angle_max': 240,
+            'voltage_min': 4500,
+            'voltage_max': 12000,
+            'temperature_limit': 85,
+        }
 
         try:
-            # Apply the received parameters
-            servo.set_id(request.new_id)
-            servo.set_angle_offset(request.angle_offset)
-            servo.set_angle_limits(request.angle_min, request.angle_max)
-            servo.set_vin_limits(int(request.voltage_min), int(request.voltage_max))
-            servo.set_temp_limit(int(request.temperature_limit))
-            servo.set_led_error_triggers(request.led_error_temp,request.led_error_voltage,request.led_error_locked)
+            # Appliquez les paramètres reçus ou utilisez les valeurs par défaut
+            servo.set_id(request.new_id if 0 <= request.new_id <= 253 else default_values['new_id'])
+            servo.set_angle_offset(request.angle_offset if -30 <= request.angle_offset <= 30 else default_values['angle_offset'])
+            servo.set_angle_limits(
+                request.angle_min if 0 <= request.angle_min <= 240 else default_values['angle_min'],
+                request.angle_max if 0 <= request.angle_max <= 240 else default_values['angle_max']
+            )
+            servo.set_vin_limits(
+                int(request.voltage_min) if 4500 <= request.voltage_min <= 12000 else int(default_values['voltage_min']),
+                int(request.voltage_max) if 4500 <= request.voltage_min <= 12000 else int(default_values['voltage_max'])
+            )
+            servo.set_temp_limit(int(request.temperature_limit) if 50 <= request.temperature_limit <= 100  else int(default_values['temperature_limit']))
+            servo.set_led_error_triggers( request.led_error_temp, request.led_error_voltage, request.led_error_locked)
             
             self.get_logger().info(f"Servo {servo_id} parameters updated.")
             response.success = True
@@ -196,6 +205,24 @@ class LX16AController(Node):
                 except Exception as e:
                     self.get_logger().error(f"Error commanding servo {i}: {e}")
 
+    def scan_connected_servos(self):
+        connected_ids = []
+        total_servos = 254
+        bar_length = 40
+        for i,servo_id in enumerate(range(0, total_servos)):
+            try:
+                servo = LX16A(servo_id)
+                connected_ids.append(servo_id)
+            except Exception:
+                continue
+
+        if connected_ids:
+            self.get_logger().info(f"\033[32;1mConnected servos: {connected_ids}\033[0m")
+        else:
+            self.get_logger().warn("\033[31mNo servos detected.\033[0m")
+        # self.get_logger().info(f"Connected servo IDs: {connected_ids}")
+        return connected_ids
+    
 def main(args=None):
     rclpy.init(args=args)
     node = LX16AController()

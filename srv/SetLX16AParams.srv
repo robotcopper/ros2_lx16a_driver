@@ -1,15 +1,13 @@
-int32 id
-int32 new_id
-int32 angle_offset
-int32 angle_min
-int32 angle_max
-float32 voltage_min
-float32 voltage_max
-float32 temperature_limit
-bool torque_enabled
-bool led_enabled
-bool led_error_temp  
-bool led_error_voltage 
-bool led_error_locked  
+int32 id 
+int32 new_id -1
+int32 angle_offset 
+int32 angle_min 
+int32 angle_max 
+float32 voltage_min 
+float32 voltage_max 
+float32 temperature_limit 
+bool led_error_temp True
+bool led_error_voltage True
+bool led_error_locked True
 ---
 bool success
