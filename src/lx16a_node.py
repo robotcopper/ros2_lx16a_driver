@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
+
+# Import necessary libraries
 import rclpy
 from rclpy.node import Node
 from pylx16a.lx16a import LX16A
 from ros2_lx16a_driver.srv import GetLX16AInfo, SetLX16AParams, SetLX16ATorque
 from std_msgs.msg import Float32MultiArray, Int32MultiArray
-from rclpy.logging import LoggingSeverity
-import threading
-import sys
-import time
 
 class LX16AController(Node):
+    """
+    ROS 2 Node for controlling LX-16A servos. 
+
+    This node provides services to get servo information, set parameters, and control torque.
+    It also subscribes to position and velocity commands to move the servos in real-time.
+    """
+
     def __init__(self):
         super().__init__('lx16a_controller')
 
-        # Définir les paramètres avec des valeurs par défaut
+
+        # Declare ROS 2 parameters with default values
         self.declare_parameter('default_angle_offset', 0)
         self.declare_parameter('default_angle_min', 0)
         self.declare_parameter('default_angle_max', 240)
@@ -24,7 +30,8 @@ class LX16AController(Node):
         self.declare_parameter('port', '/dev/ttyUSB0')
         self.declare_parameter('scan_connected_servos', False)
 
-        # Charger les paramètres
+
+        # Store default parameter values
         self.default_values = {
             'angle_offset': self.get_parameter('default_angle_offset').value,
             'angle_min': self.get_parameter('default_angle_min').value,
@@ -34,10 +41,12 @@ class LX16AController(Node):
             'temperature_limit': self.get_parameter('default_temperature_limit').value,
         }
 
-        # Manage log verbosity 
+
+        # Set logger verbosity level
         self.get_logger().set_level(self.get_parameter('log_level').value)
 
-        # Initialize the LX-16A bus
+
+        # Initialize communication with LX-16A servos
         try:
             LX16A.initialize(self.get_parameter('port').value)
             self.servos = {}
@@ -48,31 +57,35 @@ class LX16AController(Node):
             self.destroy_node()
             return
 
-        # Create services
+
+        # Create ROS 2 services
         self.srv_get = self.create_service(GetLX16AInfo, '/lx16a_get_info', self.handle_get_info)
         self.srv_set_params = self.create_service(SetLX16AParams, '/lx16a_set_params', self.handle_set_params)
         self.srv_set_torque = self.create_service(SetLX16ATorque, '/lx16a_set_torque', self.handle_set_torque)
 
-        # Create subscriber for position control
+
+        # Create ROS 2 subscribers
         self.position_subscriber = self.create_subscription(
-            Float32MultiArray,  # Message type
-            '/cmd_pose_lx16a',  # Topic name
-            self.handle_position_command,  # Callback
-            10  # Queue size
+            Float32MultiArray, '/cmd_pose_lx16a', self.handle_position_command, 10 
+        )
+        self.velocity_subscriber = self.create_subscription(
+            Int32MultiArray, '/cmd_vel_lx16a', self.handle_velocity_command, 10
         )
 
-        # Create subscriber for velocity control
-        self.velocity_subscriber = self.create_subscription(
-            Int32MultiArray,  # Message type
-            '/cmd_vel_lx16a',  # Topic name
-            self.handle_velocity_command,  # Callback
-            10  # Queue size
-        )
 
         self.get_logger().info('LX-16A driver ready')
 
+
     def get_servo(self, servo_id):
-        """Returns an instance of a given servo, creates it if necessary."""
+        """
+        Retrieve and create an instance of a servo with a given ID.
+        
+        Parameters:
+            servo_id (int): ID of the servo.
+
+        Returns:
+            LX16A: Servo instance or None if an error occurs.
+        """
         if servo_id not in self.servos:
             try:
                 self.servos[servo_id] = LX16A(servo_id)
@@ -82,17 +95,29 @@ class LX16AController(Node):
                 return None
         return self.servos[servo_id]
 
+
     def handle_get_info(self, request, response):
-        """Service to get detailed information of a servo."""
+        """
+        Handle the GetLX16AInfo service to retrieve servo information.
+
+        Parameters:
+            request (GetLX16AInfo.Request): Service request.
+            response (GetLX16AInfo.Response): Service response.
+
+        Returns:
+            GetLX16AInfo.Response: Populated response with servo details.
+        """
         servo_id = int(request.id)
         servo = self.get_servo(servo_id)
 
+
         if servo is None:
             self.get_logger().error(f"Servo {servo_id} not available.")
-            return response  # Leave response empty if the servo is not found
+            return response  
+        
 
         try:
-            # Retrieve servo information
+            # Retrieve detailed information about the servo
             response.angle_offset = int(servo.get_angle_offset()) 
             response.angle_min = int(servo.get_angle_limits()[0]) 
             response.angle_max = int(servo.get_angle_limits()[1])
@@ -114,16 +139,19 @@ class LX16AController(Node):
                 response.physical_angle = servo.get_physical_angle() 
                 response.commanded_angle = servo.get_commanded_angle() 
 
+
             self.get_logger().info(f"Information for servo {servo_id} retrieved.")
         except Exception as e:
             self.get_logger().error(f"Error retrieving info for servo {servo_id}: {e}")
-            # Empty response if an error occurs
-            return response
+
 
         return response
 
+
     def handle_set_params(self, request, response):
-        """Service to set the parameters of a servo."""
+        """
+        Handle the SetLX16AParams service to update servo parameters.
+        """
         servo_id = int(request.id)
         servo = self.get_servo(servo_id)
 
@@ -159,8 +187,11 @@ class LX16AController(Node):
         
         return response
     
+
     def handle_set_torque(self, request, response):
-        """Service to set torque of a servo."""
+        """
+        Handle the SetLX16ATorque service to enable or disable servo torque.
+        """
         servo_id = int(request.id)
         servo = self.get_servo(servo_id)
 
@@ -185,8 +216,11 @@ class LX16AController(Node):
         
         return response
 
+
     def handle_position_command(self, msg):
-        """Callback to handle position command for servos."""
+        """
+        Handle position commands received on the '/cmd_pose_lx16a' topic.
+        """
         if len(msg.data) == 0:
             self.get_logger().warn("No position command received.")
             return
@@ -202,8 +236,11 @@ class LX16AController(Node):
                 except Exception as e:
                     self.get_logger().error(f"Error moving servo {i}: {e}")
 
+
     def handle_velocity_command(self, msg):
-        """Callback to handle velocity command for servos."""
+        """
+        Handle velocity commands received on the '/cmd_vel_lx16a' topic.
+        """
         if len(msg.data) == 0:
             self.get_logger().warn("No velocity command received.")
             return
@@ -218,7 +255,11 @@ class LX16AController(Node):
                 except Exception as e:
                     self.get_logger().error(f"Error commanding servo {i}: {e}")
 
+
     def scan_connected_servos(self):
+        """
+        Scan and log all connected servos on the LX-16A bus.
+        """
         connected_ids = []
         for servo_id in range(254):
             try:
@@ -233,7 +274,11 @@ class LX16AController(Node):
             self.get_logger().warn("\033[31mNo servos detected.\033[0m")
         return connected_ids
     
+
 def main(args=None):
+    """
+    Main function to initialize and spin the ROS 2 node.
+    """
     rclpy.init(args=args)
     node = LX16AController()
 
@@ -245,8 +290,8 @@ def main(args=None):
             rclpy.shutdown()     # Shutdown if the context is still valid
 
 
-
 if __name__ == '__main__':
     main()
 
 
+    
