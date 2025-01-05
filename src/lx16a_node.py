@@ -127,7 +127,7 @@ class LX16AController(Node):
             motor_mode = servo.is_motor_mode(poll_hardware=True)  
             response.motor_mode = motor_mode  
             if motor_mode:
-                response.motor_speed = servo.get_motor_speed()  
+                response.motor_speed = int(servo.get_motor_speed(poll_hardware=True))  
             response.torque_enabled = servo.is_torque_enabled()  
             response.led_enabled = servo.is_led_power_on() 
             response.led_error_temp = servo.get_led_error_triggers()[0] 
