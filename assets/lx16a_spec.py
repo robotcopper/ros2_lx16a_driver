@@ -7,8 +7,8 @@ V = np.array([4.5, 5, 5.5, 6, 6.5, 7, 7.4, 7.5, 8, 8.5, 9, 9.5, 10, 10.5, 11, 11
 RPM = np.array([30, 36, 39.8, 43.3, 45.8, 50.5, 55.2, 55.6, 58.5, 62.5, 66.5, 70.5, 74.5, 76.8, 80, 85, 88.2, 90.5, 96, 99.2, 102.1])
 
 # Additional points
-datacheet_values_V = np.array([6, 7.4])
-datacheet_values_RPM = np.array([55.6, 62.5])
+datasheet_values_V = np.array([6, 7.4])
+datasheet_values_RPM = np.array([55.6, 62.5])
 
 # Linear regression function
 def linear_model(x, a, b):
@@ -27,7 +27,7 @@ RPM_fit = linear_model(V_fit, a, b)
 
 # Calculate the linear regression model shift applied to datasheet values
 # Compute the average vertical shift between the new points and the initial regression
-shifts = datacheet_values_RPM - linear_model(datacheet_values_V, a, b)
+shifts = datasheet_values_RPM - linear_model(datasheet_values_V, a, b)
 average_shift = np.mean(shifts)
 
 # New intercept for the parallel line
@@ -37,7 +37,7 @@ RPM_parallel_fit = linear_model(V_fit, a, parallel_b)
 # Plot the data
 plt.figure(figsize=(10, 7))
 plt.scatter(V, RPM, color="blue", label="Measures")
-plt.scatter(datacheet_values_V, datacheet_values_RPM, color="green", label="Datacheet values", marker='x', s=100)
+plt.scatter(datasheet_values_V, datasheet_values_RPM, color="green", label="Datasheet values", marker='x', s=100)
 plt.plot(V_fit, RPM_fit, color="red", label=f"Linear regression: RPM = {a:.2f} * V + {b:.2f}")
 plt.plot(V_fit, RPM_parallel_fit, color="orange", linestyle="--", label="Linear regression model applied to datasheet values")
 
