@@ -18,8 +18,10 @@ A ROS 2 package designed to interface with the LX-16A servo motors. This package
    - [Topics](#topics)
    - [Services](#services)
    - [Parameters](#parameters)
-6. [License](#license)
-7. [Acknowledgments](#acknowledgments)
+6. [LX-16A specifications](#lx-16a-specifications)
+7. [License](#license)
+8. [Acknowledgments](#acknowledgments)
+
 
 ## Features
 
@@ -39,6 +41,9 @@ A ROS 2 package designed to interface with the LX-16A servo motors. This package
 
 ```plaintext
 ros2_lx16a_driver
+├── assets
+│   ├── LX-16A_servo_motor_specifications.png
+│   └── lx16a_spec.py
 ├── CMakeLists.txt
 ├── package.xml
 ├── params
@@ -135,6 +140,15 @@ ros2_lx16a_driver
 - `log_level` (int): Logging verbosity level.
 - `port` (str): Serial port for the LX-16A bus.
 - `scan_connected_servos` (bool): Automatically scan for connected servos.
+
+## LX-16A specifications:
+
+The servomotor characterization can be found in the assets folder. 
+
+The rotational speed curve as a function of voltage was derived by measuring the motor shaft speed in motor mode, under no-load conditions, with a 100% speed command, using a tachometer for precise measurement.
+
+![alt text](assets/LX-16A_servo_motor_specifications.png)
+
 
 ## License
 
